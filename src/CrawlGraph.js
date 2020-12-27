@@ -16,6 +16,7 @@ const myConfig = {
 };
 
 const pollingPeriod = 2000;
+const startingURL = "https://google.com";
 
 // graph event callbacks
 
@@ -33,13 +34,13 @@ const onMouseOutNode = function (nodeId) {
 
 class CrawlGraph extends React.Component {
   componentDidMount() {
-    this.startCrawl();
+    // this.startCrawl();
   }
 
   startCrawl() {
     axios
       .post("https://crawl.hermenault.dev/crawl/", {
-        url: "https://smbc-comics.com",
+        url: startingURL,
       })
       .then((res) => {
         // console.log(res);
@@ -53,7 +54,6 @@ class CrawlGraph extends React.Component {
   fetchCrawlResults(resultsURL) {
     console.log("foo" + resultsURL);
     axios.get(resultsURL).then((res) => {
-      console.log(res);
       if (
         res.data.hasOwnProperty("_links") &&
         res.data._links.hasOwnProperty("next")
@@ -68,30 +68,44 @@ class CrawlGraph extends React.Component {
   }
 
   displayCrawlResults(newResults) {
-    console.log(newResults);
+    let newNodes = [];
+    let newEdges = [];
+    // console.log(newResults);
+    for (const result of newResults) {
+      // console.log(result);
+      for (const child of result.Children) {
+        newNodes.push({ id: child });
+        newEdges.push({ source: result.Parent, target: child });
+      }
+    }
+    console.log(newNodes);
+    console.log(newEdges);
+    this.setState({
+      graphData: {
+        nodes: this.state.graphData.nodes.concat(newNodes),
+        links: this.state.graphData.links.concat(newEdges),
+      },
+    });
   }
 
   onClickNode(nodeId) {
-    const graph = Object.assign({}, this.state.graphData, {
-      nodes: [{ id: "Harry" }, { id: "Sally" }, { id: "Alice" }],
-      links: [
-        { source: "Harry", target: "Sally" },
-        { source: "Alice", target: "Sally" },
-      ],
-    });
-    this.setState({ graphData: graph });
+    // const graph = Object.assign({}, this.state.graphData, {
+    //   nodes: [{ id: "Harry" }, { id: "Sally" }, { id: "Alice" }],
+    //   links: [
+    //     { source: "Harry", target: "Sally" },
+    //     { source: "Alice", target: "Sally" },
+    //   ],
+    // });
+    // this.setState({ graphData: graph });
   }
 
   constructor(props) {
     super(props);
 
     this.state = {
+      existingNodes: new Set().add(startingURL),
       graphData: {
-        nodes: [{ id: "Harry" }, { id: "Sally" }, { id: "Alice" }],
-        links: [
-          { source: "Harry", target: "Sally" },
-          { source: "Harry", target: "Alice" },
-        ],
+        nodes: [{ id: startingURL }],
       },
     };
   }
