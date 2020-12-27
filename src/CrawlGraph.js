@@ -34,7 +34,9 @@ const onMouseOutNode = function (nodeId) {
 
 class CrawlGraph extends React.Component {
   componentDidMount() {
-    // this.startCrawl();
+    this.startCrawl();
+    this.existingNodes = new Set().add(startingURL);
+    this.exisitingEdges = new Set();
   }
 
   startCrawl() {
@@ -68,23 +70,55 @@ class CrawlGraph extends React.Component {
   }
 
   displayCrawlResults(newResults) {
-    let newNodes = [];
-    let newEdges = [];
+    // let newNodes = [];
+    // let newEdges = [];
     // console.log(newResults);
     for (const result of newResults) {
       // console.log(result);
       for (const child of result.Children) {
-        newNodes.push({ id: child });
-        newEdges.push({ source: result.Parent, target: child });
+        if (!this.existingNodes.has(child)) {
+          // newNodes.push({ id: child });
+          setTimeout(this.addNode.bind(this, { id: child }), 100);
+          this.existingNodes.add(child);
+        }
+
+        const newEdge = { source: result.Parent, target: child };
+
+        if (!this.exisitingEdges.has(newEdge)) {
+          setTimeout(this.addEdge.bind(this, newEdge), 100);
+          this.exisitingEdges.add(newEdge);
+        }
+
+        // this.setState({
+        //   graphData: {
+        //     nodes: this.state.graphData.nodes.concat(newNodes),
+        //     links: this.state.graphData.links.concat(newEdges),
+        //   },
+        // });
       }
     }
-    console.log(newNodes);
-    console.log(newEdges);
+
+    // console.log(newNodes);
+    // console.log(newEdges);
+    // this.setState({
+    //   graphData: {
+    //     nodes: this.state.graphData.nodes.concat(newNodes),
+    //     links: this.state.graphData.links.concat(newEdges),
+    //   },
+    // });
+  }
+  addNode(newNode) {
+    this.state.graphData.nodes.push(newNode);
+
     this.setState({
-      graphData: {
-        nodes: this.state.graphData.nodes.concat(newNodes),
-        links: this.state.graphData.links.concat(newEdges),
-      },
+      graphData: this.state.graphData,
+    });
+  }
+
+  addEdge(newEdge) {
+    this.state.graphData.links.push(newEdge);
+    this.setState({
+      graphData: this.state.graphData,
     });
   }
 
@@ -103,10 +137,18 @@ class CrawlGraph extends React.Component {
     super(props);
 
     this.state = {
-      existingNodes: new Set().add(startingURL),
       graphData: {
         nodes: [{ id: startingURL }],
+        links: [],
       },
+      // graphData: {
+      //   nodes: [{ id: "Harry" }, { id: "Sally" }, { id: "Alice" }],
+      //   links: [
+      //     { source: "Harry", target: "Sally" },
+      //     { source: "Alice", target: "Sally" },
+      //     { source: "Sally", target: "Alice" },
+      //   ],
+      // },
     };
   }
 
