@@ -1,48 +1,33 @@
-import { Graph } from "react-d3-graph";
+import ForceGraph2D from "react-force-graph-2d";
 import React from "react";
 import axios from "axios";
 // the graph configuration, you only need to pass down properties
 // that you want to override, otherwise default ones will be used
-const myConfig = {
-  nodeHighlightBehavior: true,
-  node: {
-    color: "lightgreen",
-    size: 120,
-    highlightStrokeColor: "blue",
-  },
-  link: {
-    highlightColor: "lightblue",
-  },
-};
+
+// const data = {
+//   nodes: [{ id: "Jane" }, { id: "John" }],
+//   links: [{ source: "Jane", target: "John" }],
+// };
 
 const pollingPeriod = 2000;
-const startingURL = "https://google.com";
-
-// graph event callbacks
-
-const onDoubleClickNode = function (nodeId) {
-  window.alert(`Double clicked node ${nodeId}`);
-};
-
-const onMouseOverNode = function (nodeId) {
-  // window.alert(`Mouse over node ${nodeId}`);
-};
-
-const onMouseOutNode = function (nodeId) {
-  //   window.alert(`Mouse out node ${nodeId}`);
-};
+const startingURL = "xkcd.com";
+const maxNewNodes = 5;
+const animationPeriod = 50;
+const maxNodeLabelLength = 20;
 
 class CrawlGraph extends React.Component {
   componentDidMount() {
-    this.startCrawl();
     this.existingNodes = new Set().add(startingURL);
     this.exisitingEdges = new Set();
+    this.babyLinks = [];
+    this.startCrawl();
+    setTimeout(this.displayCrawlResults.bind(this), animationPeriod);
   }
 
   startCrawl() {
     axios
       .post("https://crawl.hermenault.dev/crawl/", {
-        url: startingURL,
+        url: "https://" + startingURL,
       })
       .then((res) => {
         // console.log(res);
@@ -60,77 +45,60 @@ class CrawlGraph extends React.Component {
         res.data.hasOwnProperty("_links") &&
         res.data._links.hasOwnProperty("next")
       ) {
+        // Fetch the next set of data.
         setTimeout(
           this.fetchCrawlResults.bind(this, res.data._links.next.href),
           pollingPeriod
         );
       }
-      this.displayCrawlResults(res.data.edges);
+      this.queueCrawlResults(res.data.edges);
     });
   }
 
-  displayCrawlResults(newResults) {
-    // let newNodes = [];
-    // let newEdges = [];
-    // console.log(newResults);
+  queueCrawlResults(newResults) {
     for (const result of newResults) {
-      // console.log(result);
       for (const child of result.Children) {
-        if (!this.existingNodes.has(child)) {
-          // newNodes.push({ id: child });
-          setTimeout(this.addNode.bind(this, { id: child }), 100);
-          this.existingNodes.add(child);
-        }
-
-        const newEdge = { source: result.Parent, target: child };
-
-        if (!this.exisitingEdges.has(newEdge)) {
-          setTimeout(this.addEdge.bind(this, newEdge), 100);
-          this.exisitingEdges.add(newEdge);
-        }
-
-        // this.setState({
-        //   graphData: {
-        //     nodes: this.state.graphData.nodes.concat(newNodes),
-        //     links: this.state.graphData.links.concat(newEdges),
-        //   },
-        // });
+        this.babyLinks.push({
+          // source: result.Parent.replace(/(^\w+:|^)(www\.)?\/\//, ""),
+          // target: child.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
+          source: result.Parent.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
+          target: child.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
+          depth: result.Depth,
+        });
       }
     }
-
-    // console.log(newNodes);
-    // console.log(newEdges);
-    // this.setState({
-    //   graphData: {
-    //     nodes: this.state.graphData.nodes.concat(newNodes),
-    //     links: this.state.graphData.links.concat(newEdges),
-    //   },
-    // });
   }
-  addNode(newNode) {
-    this.state.graphData.nodes.push(newNode);
 
+  displayCrawlResults() {
+    if (this.babyLinks.length === 0) {
+      setTimeout(this.displayCrawlResults.bind(this), animationPeriod);
+      return;
+    }
+
+    // console.log("displaying");
+    console.log(this.babyLinks.length);
+    let newNodes = [];
+    let newLinks = [];
+    for (let i = 0; i < Math.min(this.babyLinks.length, maxNewNodes); i++) {
+      if (!this.existingNodes.has(this.babyLinks[i].target)) {
+        console.log("Adding" + this.babyLinks[i].target);
+        newNodes.push({
+          id: this.babyLinks[i].target,
+          depth: this.babyLinks[i].depth,
+        });
+        this.existingNodes.add(this.babyLinks[i].target);
+      }
+      this.exisitingEdges.add(this.babyLinks[i]);
+      newLinks.push(this.babyLinks[i]);
+    }
     this.setState({
-      graphData: this.state.graphData,
+      graphData: {
+        nodes: this.state.graphData.nodes.concat(newNodes),
+        links: this.state.graphData.links.concat(newLinks),
+      },
     });
-  }
-
-  addEdge(newEdge) {
-    this.state.graphData.links.push(newEdge);
-    this.setState({
-      graphData: this.state.graphData,
-    });
-  }
-
-  onClickNode(nodeId) {
-    // const graph = Object.assign({}, this.state.graphData, {
-    //   nodes: [{ id: "Harry" }, { id: "Sally" }, { id: "Alice" }],
-    //   links: [
-    //     { source: "Harry", target: "Sally" },
-    //     { source: "Alice", target: "Sally" },
-    //   ],
-    // });
-    // this.setState({ graphData: graph });
+    this.babyLinks = this.babyLinks.slice(maxNewNodes);
+    setTimeout(this.displayCrawlResults.bind(this), animationPeriod);
   }
 
   constructor(props) {
@@ -141,27 +109,41 @@ class CrawlGraph extends React.Component {
         nodes: [{ id: startingURL }],
         links: [],
       },
-      // graphData: {
-      //   nodes: [{ id: "Harry" }, { id: "Sally" }, { id: "Alice" }],
-      //   links: [
-      //     { source: "Harry", target: "Sally" },
-      //     { source: "Alice", target: "Sally" },
-      //     { source: "Sally", target: "Alice" },
-      //   ],
-      // },
     };
   }
-
   render() {
     return (
-      <Graph
-        id="graph-id" // id is mandatory, if no id is defined rd3g will throw an error
-        data={this.state.graphData}
-        config={myConfig}
-        onClickNode={(nodeId) => this.onClickNode(nodeId)}
-        onDoubleClickNode={onDoubleClickNode}
-        onMouseOverNode={onMouseOverNode}
-        onMouseOutNode={onMouseOutNode}
+      <ForceGraph2D
+        nodeAutoColorBy="depth"
+        enableNodeDrag={false}
+        graphData={this.state.graphData}
+        backgroundColor="grey"
+        nodeCanvasObject={(node, ctx, globalScale) => {
+          const label =
+            node.id.length > maxNodeLabelLength
+              ? node.id.slice(0, maxNodeLabelLength) + "..."
+              : node.id;
+
+          const fontSize = 12 / globalScale;
+          ctx.font = `${fontSize}px Sans-Serif`;
+          const textWidth = ctx.measureText(label).width;
+          const bckgDimensions = [textWidth * 1.2, fontSize * 1.2].map(
+            (n) => n + fontSize * 0.2
+          ); // some padding
+
+          ctx.fillStyle = node.color;
+
+          ctx.fillRect(
+            node.x - bckgDimensions[0] / 2,
+            node.y - bckgDimensions[1] / 2,
+            ...bckgDimensions
+          );
+
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "rgba(0, 0, 0, 1.0)";
+          ctx.fillText(label, node.x, node.y);
+        }}
       />
     );
   }
