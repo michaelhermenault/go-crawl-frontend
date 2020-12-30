@@ -11,9 +11,33 @@ import axios from "axios";
 
 const pollingPeriod = 2000;
 const startingURL = "xkcd.com";
-const maxNewNodes = 5;
 const animationPeriod = 50;
 const maxNodeLabelLength = 20;
+
+function allBeforeTime(links, targetTime) {
+  let start = 0;
+  let end = links.length - 1;
+  let ans = -1;
+  while (start <= end) {
+    let mid = Math.floor((start + end) / 2);
+
+    // Move to the left side if the target is smaller
+    if (links[mid].timeFound >= targetTime) {
+      end = mid - 1;
+    }
+
+    // Move right side
+    else {
+      ans = mid;
+      start = mid + 1;
+    }
+  }
+  // console.log("------");
+  // console.log(targetTime);
+  // console.log(ans);
+  // console.log(links);
+  return ans;
+}
 
 class CrawlGraph extends React.Component {
   componentDidMount() {
@@ -21,7 +45,6 @@ class CrawlGraph extends React.Component {
     this.exisitingEdges = new Set();
     this.babyLinks = [];
     this.startCrawl();
-    setTimeout(this.displayCrawlResults.bind(this), animationPeriod);
   }
 
   startCrawl() {
@@ -30,16 +53,13 @@ class CrawlGraph extends React.Component {
         url: "https://" + startingURL,
       })
       .then((res) => {
-        // console.log(res);
-        setTimeout(
-          this.fetchCrawlResults.bind(this, res.data.resultsURL),
-          pollingPeriod
-        );
+        this.fetchCrawlResults(res.data.resultsURL);
+        setTimeout(this.displayCrawlResults.bind(this), animationPeriod);
+        this.startTime = Date.now() + 2000;
       });
   }
 
   fetchCrawlResults(resultsURL) {
-    console.log("foo" + resultsURL);
     axios.get(resultsURL).then((res) => {
       if (
         res.data.hasOwnProperty("_links") &&
@@ -50,6 +70,7 @@ class CrawlGraph extends React.Component {
           this.fetchCrawlResults.bind(this, res.data._links.next.href),
           pollingPeriod
         );
+      } else {
       }
       this.queueCrawlResults(res.data.edges);
     });
@@ -59,11 +80,11 @@ class CrawlGraph extends React.Component {
     for (const result of newResults) {
       for (const child of result.Children) {
         this.babyLinks.push({
-          // source: result.Parent.replace(/(^\w+:|^)(www\.)?\/\//, ""),
-          // target: child.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
           source: result.Parent.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
           target: child.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
           depth: result.Depth,
+          // Convert from nanoseconds to milliseconds
+          timeFound: result.TimeFound / 1000000,
         });
       }
     }
@@ -75,13 +96,20 @@ class CrawlGraph extends React.Component {
       return;
     }
 
-    // console.log("displaying");
-    console.log(this.babyLinks.length);
+    const lastBabyLinkToDisplay = allBeforeTime(
+      this.babyLinks,
+      Date.now() - this.startTime
+    );
+
+    if (lastBabyLinkToDisplay < 0) {
+      setTimeout(this.displayCrawlResults.bind(this), animationPeriod);
+      return;
+    }
+
     let newNodes = [];
     let newLinks = [];
-    for (let i = 0; i < Math.min(this.babyLinks.length, maxNewNodes); i++) {
+    for (let i = 0; i < lastBabyLinkToDisplay; i++) {
       if (!this.existingNodes.has(this.babyLinks[i].target)) {
-        console.log("Adding" + this.babyLinks[i].target);
         newNodes.push({
           id: this.babyLinks[i].target,
           depth: this.babyLinks[i].depth,
@@ -97,7 +125,8 @@ class CrawlGraph extends React.Component {
         links: this.state.graphData.links.concat(newLinks),
       },
     });
-    this.babyLinks = this.babyLinks.slice(maxNewNodes);
+
+    this.babyLinks = this.babyLinks.slice(lastBabyLinkToDisplay);
     setTimeout(this.displayCrawlResults.bind(this), animationPeriod);
   }
 
