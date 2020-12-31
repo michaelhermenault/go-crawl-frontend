@@ -1,6 +1,7 @@
 import ForceGraph2D from "react-force-graph-2d";
 import React from "react";
 import axios from "axios";
+import logo192 from "./logo192.png"; // Tell webpack this JS file uses this image
 // the graph configuration, you only need to pass down properties
 // that you want to override, otherwise default ones will be used
 
@@ -32,11 +33,12 @@ function allBeforeTime(links, targetTime) {
       start = mid + 1;
     }
   }
-  // console.log("------");
-  // console.log(targetTime);
-  // console.log(ans);
-  // console.log(links);
+
   return ans;
+}
+
+function getDomain(url) {
+  return url.replace(/https?:\/\//, "").split(/[/?#]/)[0];
 }
 
 class CrawlGraph extends React.Component {
@@ -79,10 +81,16 @@ class CrawlGraph extends React.Component {
   queueCrawlResults(newResults) {
     for (const result of newResults) {
       for (const child of result.Children) {
+        let img = new Image();
+        console.log(getDomain(child));
+        img.src =
+          "https://www.google.com/s2/favicons?domain=" + getDomain(child);
+
         this.babyLinks.push({
           source: result.Parent.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
           target: child.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
           depth: result.Depth,
+          targetImage: img,
           // Convert from nanoseconds to milliseconds
           timeFound: result.TimeFound / 1000000,
         });
@@ -110,9 +118,11 @@ class CrawlGraph extends React.Component {
     let newLinks = [];
     for (let i = 0; i < lastBabyLinkToDisplay; i++) {
       if (!this.existingNodes.has(this.babyLinks[i].target)) {
+        // console.log(urlParts[0]);
         newNodes.push({
           id: this.babyLinks[i].target,
           depth: this.babyLinks[i].depth,
+          image: this.babyLinks[i].targetImage,
         });
         this.existingNodes.add(this.babyLinks[i].target);
       }
@@ -146,32 +156,37 @@ class CrawlGraph extends React.Component {
         nodeAutoColorBy="depth"
         enableNodeDrag={false}
         graphData={this.state.graphData}
-        backgroundColor="grey"
+        backgroundColor="white"
         nodeCanvasObject={(node, ctx, globalScale) => {
-          const label =
-            node.id.length > maxNodeLabelLength
-              ? node.id.slice(0, maxNodeLabelLength) + "..."
-              : node.id;
+          // const label =
+          //   node.id.length > maxNodeLabelLength
+          //     ? node.id.slice(0, maxNodeLabelLength) + "..."
+          //     : node.id;
 
-          const fontSize = 12 / globalScale;
-          ctx.font = `${fontSize}px Sans-Serif`;
-          const textWidth = ctx.measureText(label).width;
-          const bckgDimensions = [textWidth * 1.2, fontSize * 1.2].map(
-            (n) => n + fontSize * 0.2
-          ); // some padding
+          // const fontSize = 12 / globalScale;
+          // ctx.font = `${fontSize}px Sans-Serif`;
+          // const textWidth = ctx.measureText(label).width;
+          // const bckgDimensions = [textWidth, fontSize].map(
+          //   (n) => n + fontSize * 0.2
+          // );
 
-          ctx.fillStyle = node.color;
+          // ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+          // ctx.fillRect(
+          //   node.x - bckgDimensions[0] / 2,
+          //   node.y - bckgDimensions[1] / 2,
+          //   ...bckgDimensions
+          // );
 
-          ctx.fillRect(
-            node.x - bckgDimensions[0] / 2,
-            node.y - bckgDimensions[1] / 2,
-            ...bckgDimensions
-          );
+          // ctx.textAlign = "center";
+          // ctx.textBaseline = "middle";
+          // ctx.fillStyle = node.color;
+          // ctx.fillText(label, node.x, node.y);
 
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = "rgba(0, 0, 0, 1.0)";
-          ctx.fillText(label, node.x, node.y);
+          // var img = new Image();
+          // img.src = logo192;
+          // ctx.drawImage(img, node.x, node.y);
+          if (node.image !== undefined)
+            ctx.drawImage(node.image, node.x, node.y);
         }}
       />
     );
