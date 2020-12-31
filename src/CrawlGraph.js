@@ -185,7 +185,13 @@ class CrawlGraph extends React.Component {
           // img.src = logo192;
           // ctx.drawImage(img, node.x, node.y);
           if (node.image !== undefined)
-            ctx.drawImage(node.image, node.x, node.y);
+            ctx.drawImage(
+              node.image,
+              node.x,
+              node.y,
+              node.image.width / globalScale,
+              node.image.height / globalScale
+            );
         }}
       />
     );
