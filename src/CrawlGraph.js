@@ -1,7 +1,6 @@
 import ForceGraph2D from "react-force-graph-2d";
 import React from "react";
 import axios from "axios";
-import logo192 from "./logo192.png"; // Tell webpack this JS file uses this image
 // the graph configuration, you only need to pass down properties
 // that you want to override, otherwise default ones will be used
 
