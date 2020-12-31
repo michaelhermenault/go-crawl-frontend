@@ -1,19 +1,12 @@
 import ForceGraph2D from "react-force-graph-2d";
 import React from "react";
 import axios from "axios";
-// the graph configuration, you only need to pass down properties
-// that you want to override, otherwise default ones will be used
-
-// const data = {
-//   nodes: [{ id: "Jane" }, { id: "John" }],
-//   links: [{ source: "Jane", target: "John" }],
-// };
 
 const pollingPeriod = 2000;
-const startingURL = "xkcd.com";
 const animationPeriod = 50;
-const maxNodeLabelLength = 20;
-
+const maxNodeLabelLength = 30;
+const defaultIconSize = 20;
+const scaleForLabels = 1.7;
 function allBeforeTime(links, targetTime) {
   let start = 0;
   let end = links.length - 1;
@@ -40,15 +33,21 @@ function getDomain(url) {
   return url.replace(/https?:\/\//, "").split(/[/?#]/)[0];
 }
 
+function drawIcon(imageContainer, ctx, xPos, yPos, iconSize) {
+  if (imageContainer !== undefined && imageContainer.imgLoaded) {
+    ctx.drawImage(imageContainer.image, xPos, yPos, iconSize, iconSize);
+  }
+}
+
 class CrawlGraph extends React.Component {
   componentDidMount() {
-    this.existingNodes = new Set().add(startingURL);
+    this.existingNodes = new Set().add(this.props.startingURL);
     this.exisitingEdges = new Set();
     this.babyLinks = [];
-    this.startCrawl();
+    this.startCrawl(this.props.startingURL);
   }
 
-  startCrawl() {
+  startCrawl(startingURL) {
     axios
       .post("https://crawl.hermenault.dev/crawl/", {
         url: "https://" + startingURL,
@@ -122,7 +121,6 @@ class CrawlGraph extends React.Component {
     let newLinks = [];
     for (let i = 0; i < lastBabyLinkToDisplay; i++) {
       if (!this.existingNodes.has(this.babyLinks[i].target)) {
-        // console.log(urlParts[0]);
         newNodes.push({
           id: this.babyLinks[i].target,
           depth: this.babyLinks[i].depth,
@@ -146,10 +144,10 @@ class CrawlGraph extends React.Component {
 
   constructor(props) {
     super(props);
-
+    console.log(props);
     this.state = {
       graphData: {
-        nodes: [{ id: startingURL }],
+        nodes: [{ id: this.props.startingURL }],
         links: [],
       },
     };
@@ -157,49 +155,47 @@ class CrawlGraph extends React.Component {
   render() {
     return (
       <ForceGraph2D
-        nodeAutoColorBy="depth"
         enableNodeDrag={false}
         graphData={this.state.graphData}
         backgroundColor="white"
         nodeCanvasObject={(node, ctx, globalScale) => {
-          // const label =
-          //   node.id.length > maxNodeLabelLength
-          //     ? node.id.slice(0, maxNodeLabelLength) + "..."
-          //     : node.id;
+          const drawnSize = defaultIconSize / globalScale;
+          drawIcon(
+            node.imageContainer,
+            ctx,
+            node.x - drawnSize / 2,
+            node.y - drawnSize / 2,
+            drawnSize
+          );
+          if (globalScale > scaleForLabels) {
+            const label =
+              node.id.length > maxNodeLabelLength
+                ? node.id.slice(0, maxNodeLabelLength) + "..."
+                : node.id;
 
-          // const fontSize = 12 / globalScale;
-          // ctx.font = `${fontSize}px Sans-Serif`;
-          // const textWidth = ctx.measureText(label).width;
-          // const bckgDimensions = [textWidth, fontSize].map(
-          //   (n) => n + fontSize * 0.2
-          // );
-
-          // ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-          // ctx.fillRect(
-          //   node.x - bckgDimensions[0] / 2,
-          //   node.y - bckgDimensions[1] / 2,
-          //   ...bckgDimensions
-          // );
-
-          // ctx.textAlign = "center";
-          // ctx.textBaseline = "middle";
-          // ctx.fillStyle = node.color;
-          // ctx.fillText(label, node.x, node.y);
-
-          // var img = new Image();
-          // img.src = logo192;
-          // ctx.drawImage(img, node.x, node.y);
-          if (
-            node.imageContainer !== undefined &&
-            node.imageContainer.imgLoaded
-          )
-            ctx.drawImage(
-              node.imageContainer.image,
-              node.x,
-              node.y,
-              node.imageContainer.image.width / globalScale,
-              node.imageContainer.image.height / globalScale
+            const fontSize = 12 / globalScale;
+            ctx.font = `${fontSize}px Sans-Serif`;
+            const textWidth = ctx.measureText(label).width;
+            const bckgDimensions = [textWidth, fontSize].map(
+              (n) => n + fontSize * 0.2
             );
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.fillRect(
+              node.x - bckgDimensions[0] / 2,
+              node.y + drawnSize / 2,
+              ...bckgDimensions
+            );
+
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "black";
+            ctx.fillText(
+              label,
+              node.x,
+              node.y + bckgDimensions[1] / 2 + +drawnSize / 2
+            );
+          }
         }}
       />
     );
