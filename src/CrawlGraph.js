@@ -81,7 +81,12 @@ class CrawlGraph extends React.Component {
     for (const result of newResults) {
       for (const child of result.Children) {
         let img = new Image();
+        let imgContainer = { imgLoaded: false, image: img };
         console.log(getDomain(child));
+
+        img.onload = function () {
+          imgContainer.imgLoaded = true;
+        };
         img.src =
           "https://www.google.com/s2/favicons?domain=" + getDomain(child);
 
@@ -89,7 +94,7 @@ class CrawlGraph extends React.Component {
           source: result.Parent.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
           target: child.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
           depth: result.Depth,
-          targetImage: img,
+          targetImageContainer: imgContainer,
           // Convert from nanoseconds to milliseconds
           timeFound: result.TimeFound / 1000000,
         });
@@ -121,7 +126,7 @@ class CrawlGraph extends React.Component {
         newNodes.push({
           id: this.babyLinks[i].target,
           depth: this.babyLinks[i].depth,
-          image: this.babyLinks[i].targetImage,
+          imageContainer: this.babyLinks[i].targetImageContainer,
         });
         this.existingNodes.add(this.babyLinks[i].target);
       }
@@ -184,13 +189,16 @@ class CrawlGraph extends React.Component {
           // var img = new Image();
           // img.src = logo192;
           // ctx.drawImage(img, node.x, node.y);
-          if (node.image !== undefined)
+          if (
+            node.imageContainer !== undefined &&
+            node.imageContainer.imgLoaded
+          )
             ctx.drawImage(
-              node.image,
+              node.imageContainer.image,
               node.x,
               node.y,
-              node.image.width / globalScale,
-              node.image.height / globalScale
+              node.imageContainer.image.width / globalScale,
+              node.imageContainer.image.height / globalScale
             );
         }}
       />
