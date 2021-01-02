@@ -64,12 +64,30 @@ class App extends React.Component {
         url: "https://" + startingURL,
       })
       .then((res) => {
-        this.fetchCrawlResults(res.data.resultsURL);
-        setTimeout(this.displayCrawlResults.bind(this), animationPeriod);
-        this.startTime = Date.now() + 2000;
+        this.fetchFirstCrawlResults(res.data.resultsURL);
       });
   }
 
+  // Special case for first results fetched. Handles error cases and sets animation timings.
+  fetchFirstCrawlResults(resultsURL) {
+    axios.get(resultsURL).then((res) => {
+      if (
+        res.data.hasOwnProperty("_links") &&
+        res.data._links.hasOwnProperty("next")
+      ) {
+        // Fetch the next set of data.
+        setTimeout(
+          this.fetchCrawlResults.bind(this, res.data._links.next.href),
+          pollingPeriod
+        );
+      }
+      this.startTime = Date.now();
+      this.queueCrawlResults(res.data.edges);
+      this.displayCrawlResults();
+    });
+  }
+
+  // Gets a batch of results from the API and queues the next batch if there are any remaining.
   fetchCrawlResults(resultsURL) {
     axios.get(resultsURL).then((res) => {
       if (
@@ -81,12 +99,12 @@ class App extends React.Component {
           this.fetchCrawlResults.bind(this, res.data._links.next.href),
           pollingPeriod
         );
-      } else {
       }
       this.queueCrawlResults(res.data.edges);
     });
   }
 
+  // Turns raw results from API into frames to be displayed
   queueCrawlResults(newResults) {
     for (const result of newResults) {
       for (const child of result.Children) {
@@ -104,6 +122,7 @@ class App extends React.Component {
     }
   }
 
+  // Adds results to the graph when they should be added
   displayCrawlResults() {
     if (this.babyLinks.length === 0) {
       setTimeout(this.displayCrawlResults.bind(this), animationPeriod);
