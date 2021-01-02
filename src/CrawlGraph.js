@@ -7,6 +7,20 @@ const animationPeriod = 50;
 const maxNodeLabelLength = 30;
 const defaultIconSize = 20;
 const scaleForLabels = 1.7;
+const animationTimeScale = 3;
+
+function createImageContainerForDomain(domain) {
+  let img = new Image();
+  let imgContainer = { imgLoaded: false, image: img };
+
+  img.onload = function () {
+    imgContainer.imgLoaded = true;
+  };
+  img.src = "https://www.google.com/s2/favicons?domain=" + domain;
+
+  return imgContainer;
+}
+
 function allBeforeTime(links, targetTime) {
   let start = 0;
   let end = links.length - 1;
@@ -31,6 +45,10 @@ function allBeforeTime(links, targetTime) {
 
 function getDomain(url) {
   return url.replace(/https?:\/\//, "").split(/[/?#]/)[0];
+}
+
+function sanitizeURL(url) {
+  return url.replace(/(^\w+:|^)\/\/(www\.)?/, "");
 }
 
 function drawIcon(imageContainer, ctx, xPos, yPos, iconSize) {
@@ -79,23 +97,15 @@ class CrawlGraph extends React.Component {
   queueCrawlResults(newResults) {
     for (const result of newResults) {
       for (const child of result.Children) {
-        let img = new Image();
-        let imgContainer = { imgLoaded: false, image: img };
-        console.log(getDomain(child));
-
-        img.onload = function () {
-          imgContainer.imgLoaded = true;
-        };
-        img.src =
-          "https://www.google.com/s2/favicons?domain=" + getDomain(child);
+        let imgContainer = createImageContainerForDomain(getDomain(child));
 
         this.babyLinks.push({
-          source: result.Parent.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
-          target: child.replace(/(^\w+:|^)\/\/(www\.)?/, ""),
+          source: sanitizeURL(result.Parent),
+          target: sanitizeURL(child),
           depth: result.Depth,
           targetImageContainer: imgContainer,
           // Convert from nanoseconds to milliseconds
-          timeFound: result.TimeFound / 1000000,
+          timeFound: (animationTimeScale * result.TimeFound) / 1000000,
         });
       }
     }
@@ -147,7 +157,14 @@ class CrawlGraph extends React.Component {
     console.log(props);
     this.state = {
       graphData: {
-        nodes: [{ id: this.props.startingURL }],
+        nodes: [
+          {
+            id: this.props.startingURL,
+            imageContainer: createImageContainerForDomain(
+              getDomain(this.props.startingURL)
+            ),
+          },
+        ],
         links: [],
       },
     };
@@ -193,7 +210,7 @@ class CrawlGraph extends React.Component {
             ctx.fillText(
               label,
               node.x,
-              node.y + bckgDimensions[1] / 2 + +drawnSize / 2
+              node.y + bckgDimensions[1] / 2 + drawnSize / 2
             );
           }
         }}
@@ -202,4 +219,4 @@ class CrawlGraph extends React.Component {
   }
 }
 
-export { CrawlGraph };
+export { CrawlGraph, sanitizeURL };

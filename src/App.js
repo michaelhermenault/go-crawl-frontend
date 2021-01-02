@@ -1,7 +1,7 @@
 import "./App.css";
 
 import React from "react";
-import { CrawlGraph } from "./CrawlGraph";
+import { CrawlGraph, sanitizeURL } from "./CrawlGraph";
 import { CrawlForm } from "./CrawlForm";
 
 class App extends React.Component {
@@ -13,7 +13,7 @@ class App extends React.Component {
     };
   }
   crawlURLCallback(url) {
-    this.startingURL = url;
+    this.startingURL = sanitizeURL(url);
     this.setState({ submitState: "VALIDATING" });
   }
   render() {
