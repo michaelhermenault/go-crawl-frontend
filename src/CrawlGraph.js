@@ -4,6 +4,11 @@ import React from "react";
 const maxNodeLabelLength = 30;
 const defaultIconSize = 20;
 const scaleForLabels = 1.7;
+const arrowSize = 4;
+
+const handleNodeClick = (node) => {
+  window.open("http://" + node.id, "_blank");
+};
 
 function drawIcon(imageContainer, ctx, xPos, yPos, iconSize) {
   if (imageContainer !== undefined && imageContainer.imgLoaded) {
@@ -15,6 +20,11 @@ class CrawlGraph extends React.Component {
   render() {
     return (
       <ForceGraph2D
+        nodeCanvasObjectMode={() => "replace"}
+        nodeRelSize={15}
+        d3VelocityDecay={0.7}
+        linkDirectionalArrowLength={arrowSize}
+        onNodeClick={handleNodeClick}
         enableNodeDrag={false}
         graphData={this.props.graphData}
         backgroundColor="white"
