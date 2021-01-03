@@ -1,7 +1,6 @@
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import React from "react";
-import "./CrawlForm.css";
 
 class CrawlForm extends React.Component {
   constructor(props) {
@@ -18,7 +17,15 @@ class CrawlForm extends React.Component {
   }
   render() {
     return (
-      <div className="CrawlForm">
+      <div
+        className="CrawlForm"
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+        }}
+      >
         <Form onSubmit={this.handleSubmit}>
           <Form.Group size="lg">
             <Form.Control

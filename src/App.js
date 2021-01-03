@@ -1,9 +1,11 @@
-import "./App.css";
-
 import React from "react";
 import { CrawlGraph } from "./CrawlGraph";
 import { CrawlForm } from "./CrawlForm";
 import axios from "axios";
+import Spinner from "react-bootstrap/Spinner";
+import Alert from "react-bootstrap/Alert";
+
+import "./CrawlForm.css";
 
 const pollingPeriod = 2000;
 const animationPeriod = 50;
@@ -71,19 +73,33 @@ class App extends React.Component {
   // Special case for first results fetched. Handles error cases and sets animation timings.
   fetchFirstCrawlResults(resultsURL) {
     axios.get(resultsURL).then((res) => {
-      if (
-        res.data.hasOwnProperty("_links") &&
-        res.data._links.hasOwnProperty("next")
-      ) {
-        // Fetch the next set of data.
+      // We've actually retrieved some results
+      if (res.data.edges.length > 0) {
+        if (
+          res.data.hasOwnProperty("_links") &&
+          res.data._links.hasOwnProperty("next")
+        ) {
+          // Fetch the next set of data.
+
+          this.startTime = Date.now();
+          this.queueCrawlResults(res.data.edges);
+          setTimeout(
+            this.fetchCrawlResults.bind(this, res.data._links.next.href),
+            pollingPeriod
+          );
+          this.displayCrawlResults();
+          this.setState({
+            submitState: "VALIDATED",
+          });
+        } else {
+          this.setState({ submitState: "ERROR" });
+        }
+      } else {
         setTimeout(
-          this.fetchCrawlResults.bind(this, res.data._links.next.href),
+          this.fetchFirstCrawlResults.bind(this, res.data._links.next.href),
           pollingPeriod
         );
       }
-      this.startTime = Date.now();
-      this.queueCrawlResults(res.data.edges);
-      this.displayCrawlResults();
     });
   }
 
@@ -196,7 +212,35 @@ class App extends React.Component {
           <CrawlForm crawlURLCallback={this.crawlURLCallback} />
         )}
         {this.state.submitState === "VALIDATING" && (
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <Spinner animation="border" role="status">
+              <span className="sr-only">Loading...</span>
+            </Spinner>
+          </div>
+        )}
+        {this.state.submitState === "VALIDATED" && (
           <CrawlGraph graphData={this.state.graphData} />
+        )}
+        {this.state.submitState === "ERROR" && (
+          <Alert
+            variant="warning"
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            Web Crawler couldn't find any links at this url, please refresh and
+            try another.
+          </Alert>
         )}
       </div>
     );
